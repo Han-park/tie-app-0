@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import axios from 'axios';
 import * as cheerio from 'cheerio';
 import puppeteer from 'puppeteer';
 import { NextRequest } from 'next/server';
@@ -13,6 +12,14 @@ interface LogMessage {
   step: string;
   message: string;
   timestamp: number;
+}
+
+// Add type for tracks
+interface Track {
+  number: number;
+  title: string;
+  artist: string;
+  album: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -71,7 +78,7 @@ export async function POST(request: NextRequest) {
           descriptionFound = true;
           log('6', `Found description with selector: ${selector}`);
           break;
-        } catch (_) {
+        } catch {
           log('6', `Selector ${selector} not found`);
         }
       }
@@ -130,7 +137,7 @@ export async function POST(request: NextRequest) {
       const $ = cheerio.load(content);
 
       log('12', 'Extracting tracks');
-      const tracks: any[] = [];
+      const tracks: Track[] = [];
       
       // Updated selectors to specifically target music section
       const musicSectionSelectors = [
@@ -187,7 +194,7 @@ export async function POST(request: NextRequest) {
               break;
             }
           }
-        } catch (e) {
+        } catch {
           log('12', `Failed with selector ${sectionSelector}, trying next...`);
         }
       }

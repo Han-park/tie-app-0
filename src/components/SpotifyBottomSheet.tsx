@@ -9,13 +9,6 @@ interface Track {
   album: string;
 }
 
-interface SpotifyResult {
-  name: string;
-  artist: string;
-  album: string;
-  uri: string;
-}
-
 interface SpotifyResults {
   playlist?: {
     id: string;
@@ -35,7 +28,7 @@ interface SpotifyResults {
 }
 
 interface SpotifyBottomSheetProps {
-  tracks: Track[];
+  spotifyTracks: Track[];
   onAddToQueue: () => void;
   onCreatePlaylist: () => void;
   isAddingToSpotify: boolean;
@@ -50,7 +43,7 @@ interface SpotifyBottomSheetProps {
 }
 
 export default function SpotifyBottomSheet({
-  tracks,
+  spotifyTracks,
   onAddToQueue,
   onCreatePlaylist,
   isAddingToSpotify,
@@ -166,7 +159,7 @@ export default function SpotifyBottomSheet({
           ) : (
             <>
               <button
-                onClick={addMethod === 'queue' ? onAddToQueue : onCreatePlaylist}
+                onClick={onAddToQueue}
                 disabled={isAddingToSpotify || isCreatingPlaylist || (addMethod === 'playlist' && !playlistName)}
                 className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 
                   disabled:bg-green-300 disabled:cursor-not-allowed transition-colors
