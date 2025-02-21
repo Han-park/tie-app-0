@@ -49,7 +49,8 @@ export async function GET() {
     }
 
     return NextResponse.json({ accessToken: data.access_token });
-  } catch (error) {
+  } catch (err) {
+    console.error('Failed to refresh token:', err);
     return NextResponse.json({ error: 'Failed to refresh token' }, { status: 500 });
   }
 } 

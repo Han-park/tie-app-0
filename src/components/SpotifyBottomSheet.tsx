@@ -3,14 +3,45 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+interface Track {
+  title: string;
+  artist: string;
+  album: string;
+}
+
+interface SpotifyResult {
+  name: string;
+  artist: string;
+  album: string;
+  uri: string;
+}
+
+interface SpotifyResults {
+  playlist?: {
+    id: string;
+    name: string;
+    url: string;
+  };
+  results: Array<{
+    original: Track;
+    spotify: {
+      name: string;
+      artist: string;
+      album: string;
+      uri: string;
+    };
+  }>;
+  errors: string[];
+}
+
 interface SpotifyBottomSheetProps {
-  tracks: any[];
+  tracks: Track[];
   onAddToQueue: () => void;
   onCreatePlaylist: () => void;
   isAddingToSpotify: boolean;
   isCreatingPlaylist: boolean;
   deviceError: boolean;
-  spotifyResults: any;
+  spotifyResults: SpotifyResults | null;
   playlistName: string;
   onPlaylistNameChange: (name: string) => void;
   addMethod: 'queue' | 'playlist';
@@ -179,7 +210,7 @@ export default function SpotifyBottomSheet({
                   ✓ Created playlist: <a href={spotifyResults.playlist.url} target="_blank" rel="noopener noreferrer" className="underline">{spotifyResults.playlist.name}</a>
                 </div>
               )}
-              {spotifyResults.results.map((result: any, index: number) => (
+              {spotifyResults.results.map((result, index) => (
                 <div key={index} className="text-sm text-gray-600 mb-1">
                   ✓ Added: {result.spotify.name} by {result.spotify.artist}
                 </div>

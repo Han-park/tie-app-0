@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from 'next/navigation';
 import SpotifyBottomSheet from '@/components/SpotifyBottomSheet';
@@ -10,6 +9,25 @@ interface Track {
   title: string;
   artist: string;
   album: string;
+}
+
+// Add proper types for spotifyResults
+interface SpotifyResults {
+  playlist?: {
+    id: string;
+    name: string;
+    url: string;
+  };
+  results: Array<{
+    original: Track;
+    spotify: {
+      name: string;
+      artist: string;
+      album: string;
+      uri: string;
+    };
+  }>;
+  errors: string[];
 }
 
 // Skeleton component for loading state
@@ -31,7 +49,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [logs, setLogs] = useState<Array<{ step: string; message: string; timestamp: number }>>([]);
   const [isAddingToSpotify, setIsAddingToSpotify] = useState(false);
-  const [spotifyResults, setSpotifyResults] = useState<any>(null);
+  const [spotifyResults, setSpotifyResults] = useState<SpotifyResults | null>(null);
   const [deviceError, setDeviceError] = useState(false);
   const [playlistName, setPlaylistName] = useState("");
   const [addMethod, setAddMethod] = useState<'queue' | 'playlist'>('queue');
@@ -124,8 +142,8 @@ export default function Home() {
       } else {
         setSpotifyResults(data);
       }
-    } catch (error) {
-      setError('Failed to add tracks to Spotify queue');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add tracks to Spotify queue');
     } finally {
       setIsAddingToSpotify(false);
     }
@@ -159,8 +177,8 @@ export default function Home() {
 
       const data = await response.json();
       setSpotifyResults(data);
-    } catch (error) {
-      setError('Failed to create playlist');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create playlist');
     } finally {
       setIsCreatingPlaylist(false);
     }

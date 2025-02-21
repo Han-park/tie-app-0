@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
           descriptionFound = true;
           log('6', `Found description with selector: ${selector}`);
           break;
-        } catch (e) {
+        } catch (_) {
           log('6', `Selector ${selector} not found`);
         }
       }
