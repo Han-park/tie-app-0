@@ -201,9 +201,11 @@ export async function POST(request: NextRequest) {
       }
 
       log('13', 'Process completed successfully');
+      const videoTitle = $('title').text().replace(' - YouTube', '').trim();
       return NextResponse.json({ 
         tracks,
-        logs // Include logs in the response
+        logs,
+        videoTitle
       });
     } finally {
       log('14', 'Closing browser');

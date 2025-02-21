@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from 'next/navigation';
+import SpotifyBottomSheet from '@/components/SpotifyBottomSheet';
 
 interface Track {
   number: number;
@@ -35,6 +36,7 @@ export default function Home() {
   const [playlistName, setPlaylistName] = useState("");
   const [addMethod, setAddMethod] = useState<'queue' | 'playlist'>('queue');
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
+  const [videoTitle, setVideoTitle] = useState("");
   const router = useRouter();
 
   const extractVideoId = (url: string): string | null => {
@@ -53,8 +55,8 @@ export default function Home() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setLogs([]); // Clear previous logs
-
+    setLogs([]);
+    
     try {
       const response = await fetch('/api/tracks', {
         method: 'POST',
@@ -71,7 +73,9 @@ export default function Home() {
       }
 
       setTracks(data.tracks);
-      setLogs(data.logs); // Set the logs from the response
+      setLogs(data.logs);
+      setVideoTitle(data.videoTitle);
+      setPlaylistName(data.videoTitle);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -163,17 +167,17 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-8 pb-32">
       <main className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-8">YouTube Mix Set Bookmarker</h1>
-        
+        <h1 className="text-2xl font-normal mb-8">TIE: YouTube Mix Set Bookmarker</h1>
+      
         <form onSubmit={handleUrlSubmit} className="mb-8">
           <input
             type="text"
             value={videoUrl}
             onChange={(e) => setVideoUrl(e.target.value)}
             placeholder="Paste YouTube URL here"
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded bg-white/10"
           />
           <div className="mt-2 space-y-2">
             <button 
@@ -275,137 +279,27 @@ export default function Home() {
             ))
           )}
         </div>
-
-        {tracks.length > 0 && (
-          <div className="mb-4 space-y-4">
-            <div className="flex flex-col gap-4">
-              <div className="flex gap-4">
-                <button
-                  onClick={() => setAddMethod('queue')}
-                  className={`flex-1 px-4 py-2 rounded transition-colors ${
-                    addMethod === 'queue'
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Add to Queue
-                </button>
-                <button
-                  onClick={() => setAddMethod('playlist')}
-                  className={`flex-1 px-4 py-2 rounded transition-colors ${
-                    addMethod === 'playlist'
-                      ? 'bg-green-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Create Playlist
-                </button>
-              </div>
-
-              {addMethod === 'playlist' && (
-                <input
-                  type="text"
-                  value={playlistName}
-                  onChange={(e) => setPlaylistName(e.target.value)}
-                  placeholder="Enter playlist name"
-                  className="w-full p-2 border rounded"
-                />
-              )}
-
-              <div className="flex justify-between items-center">
-                {deviceError && addMethod === 'queue' ? (
-                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded">
-                    <h3 className="font-bold text-yellow-800 mb-2">
-                      No Active Spotify Device Found
-                    </h3>
-                    <p className="text-yellow-700 mb-4">
-                      Please follow these steps:
-                    </p>
-                    <ol className="list-decimal list-inside text-yellow-700 mb-4 space-y-2">
-                      <li>Open Spotify app on your device</li>
-                      <li>Start playing any track</li>
-                      <li>Click the retry button below</li>
-                    </ol>
-                    <button
-                      onClick={handleAddToSpotify}
-                      disabled={isAddingToSpotify}
-                      className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 
-                        disabled:bg-yellow-300 disabled:cursor-not-allowed transition-colors
-                        flex items-center gap-2"
-                    >
-                      {isAddingToSpotify ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Retrying...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshIcon />
-                          Retry Adding to Queue
-                        </>
-                      )}
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <button
-                      onClick={addMethod === 'queue' ? handleAddToSpotify : handleCreatePlaylist}
-                      disabled={isAddingToSpotify || isCreatingPlaylist || (addMethod === 'playlist' && !playlistName)}
-                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 
-                        disabled:bg-green-300 disabled:cursor-not-allowed transition-colors
-                        flex items-center gap-2"
-                    >
-                      {isAddingToSpotify || isCreatingPlaylist ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          {addMethod === 'queue' ? 'Adding to Queue...' : 'Creating Playlist...'}
-                        </>
-                      ) : (
-                        <>
-                          <SpotifyIcon />
-                          {addMethod === 'queue' ? 'Add to Queue' : 'Create Playlist'}
-                        </>
-                      )}
-                    </button>
-                    
-                    <button
-                      onClick={async () => {
-                        await fetch('/api/auth/spotify/logout', { method: 'POST' });
-                        router.push('/spotify');
-                      }}
-                      className="px-4 py-2 text-red-600 hover:text-red-700 
-                        transition-colors flex items-center gap-2"
-                    >
-                      Reconnect Spotify
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-            
-            {spotifyResults && (
-              <div className="mt-4 p-4 bg-gray-50 rounded border">
-                <h3 className="font-bold mb-2">Spotify Results:</h3>
-                {spotifyResults.playlist && (
-                  <div className="mb-2 text-green-600">
-                    ✓ Created playlist: <a href={spotifyResults.playlist.url} target="_blank" rel="noopener noreferrer" className="underline">{spotifyResults.playlist.name}</a>
-                  </div>
-                )}
-                {spotifyResults.results.map((result: any, index: number) => (
-                  <div key={index} className="text-sm text-gray-600 mb-1">
-                    ✓ Added: {result.spotify.name} by {result.spotify.artist}
-                  </div>
-                ))}
-                {spotifyResults.errors.map((error: string, index: number) => (
-                  <div key={index} className="text-sm text-red-600 mb-1">
-                    ✗ {error}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </main>
+
+      {tracks.length > 0 && (
+        <SpotifyBottomSheet
+          tracks={tracks}
+          onAddToQueue={handleAddToSpotify}
+          onCreatePlaylist={handleCreatePlaylist}
+          isAddingToSpotify={isAddingToSpotify}
+          isCreatingPlaylist={isCreatingPlaylist}
+          deviceError={deviceError}
+          spotifyResults={spotifyResults}
+          playlistName={playlistName}
+          onPlaylistNameChange={(name) => setPlaylistName(name)}
+          addMethod={addMethod}
+          onMethodChange={(method) => setAddMethod(method)}
+          onReconnectSpotify={async () => {
+            await fetch('/api/auth/spotify/logout', { method: 'POST' });
+            router.push('/spotify');
+          }}
+        />
+      )}
     </div>
   );
 }
