@@ -54,7 +54,6 @@ export default function Home() {
   const [playlistName, setPlaylistName] = useState("");
   const [addMethod, setAddMethod] = useState<'queue' | 'playlist'>('queue');
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
-  const [videoTitle, setVideoTitle] = useState("");
   const router = useRouter();
 
   const extractVideoId = (url: string): string | null => {

@@ -159,7 +159,7 @@ export default function SpotifyBottomSheet({
           ) : (
             <>
               <button
-                onClick={onAddToQueue}
+                onClick={addMethod === 'queue' ? onAddToQueue : onCreatePlaylist}
                 disabled={isAddingToSpotify || isCreatingPlaylist || (addMethod === 'playlist' && !playlistName)}
                 className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 
                   disabled:bg-green-300 disabled:cursor-not-allowed transition-colors
@@ -216,6 +216,10 @@ export default function SpotifyBottomSheet({
             </motion.div>
           )}
         </AnimatePresence>
+
+        <div className="text-sm text-gray-400 mt-2">
+          {spotifyTracks.length} tracks selected
+        </div>
       </motion.div>
     </motion.div>
   );
