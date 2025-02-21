@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
+import chromium from 'chrome-aws-lambda';
 import { NextRequest } from 'next/server';
 
 // Add export for allowed methods
@@ -24,6 +25,7 @@ interface Track {
 
 export async function POST(request: NextRequest) {
   const logs: LogMessage[] = [];
+  const tracks: Track[] = [];
   
   const log = (step: string, message: string) => {
     const logMessage = { step, message, timestamp: Date.now() };
@@ -43,11 +45,15 @@ export async function POST(request: NextRequest) {
     log('2', `Video ID extracted: ${videoId}`);
 
     log('3', 'Launching Puppeteer');
-    const browser = await puppeteer.launch({ 
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'] 
+    const browser = await puppeteer.launch({
+      args: chromium.args,
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath,
+      headless: chromium.headless,
     });
+
     const page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
     
     try {
       log('4', 'Navigating to YouTube page');
@@ -137,7 +143,6 @@ export async function POST(request: NextRequest) {
       const $ = cheerio.load(content);
 
       log('12', 'Extracting tracks');
-      const tracks: Track[] = [];
       
       // Updated selectors to specifically target music section
       const musicSectionSelectors = [
