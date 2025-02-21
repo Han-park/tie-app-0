@@ -14,12 +14,12 @@ interface Track {
 
 // Skeleton component for loading state
 const TrackSkeleton = () => (
-  <div className="flex items-center gap-4 p-4 border rounded animate-pulse">
+  <div className="flex items-center gap-4 p-4 border animate-pulse">
     <div className="w-8 flex-shrink-0 text-gray-300">#</div>
     <div className="flex-1">
-      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-      <div className="h-3 bg-gray-200 rounded w-1/2 mb-2"></div>
-      <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+      <div className="h-4 bg-gray-200 w-3/4 mb-2"></div>
+      <div className="h-3 bg-gray-200 w-1/2 mb-2"></div>
+      <div className="h-3 bg-gray-200 w-2/3"></div>
     </div>
   </div>
 );
@@ -177,13 +177,13 @@ export default function Home() {
             value={videoUrl}
             onChange={(e) => setVideoUrl(e.target.value)}
             placeholder="Paste YouTube URL here"
-            className="w-full p-2 border rounded bg-white/10"
+            className="w-full p-2 border bg-white/10"
           />
           <div className="mt-2 space-y-2">
             <button 
               type="submit"
               disabled={loading}
-              className={`w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 
+              className={`w-full px-4 py-2 bg-red-600 text-white hover:bg-red-700 
                 disabled:bg-red-300 disabled:cursor-not-allowed transition-colors`}
             >
               {loading ? 'Loading Tracks...' : 'Load Tracks'}
@@ -238,7 +238,7 @@ export default function Home() {
         </form>
 
         {error && (
-          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded animate-fade-in">
+          <div className="mb-4 p-4 bg-red-100 text-red-700 animate-fade-in">
             {error}
           </div>
         )}
@@ -252,7 +252,6 @@ export default function Home() {
               title="YouTube video player"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
-              className="rounded"
             />
           </div>
         )}
@@ -266,7 +265,7 @@ export default function Home() {
             </>
           ) : (
             tracks.map((track) => (
-              <div key={`${track.title}-${track.artist}`} className="flex items-center gap-4 p-4 border rounded">
+              <div key={`${track.title}-${track.artist}`} className="flex items-center gap-4 p-4 border">
                 <div className="w-8 flex-shrink-0 text-gray-500 font-mono">
                   {track.number}
                 </div>

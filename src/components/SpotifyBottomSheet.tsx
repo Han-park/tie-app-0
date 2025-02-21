@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface SpotifyBottomSheetProps {
@@ -34,6 +34,13 @@ export default function SpotifyBottomSheet({
 }: SpotifyBottomSheetProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Auto-expand when new results arrive
+  useEffect(() => {
+    if (spotifyResults) {
+      setIsExpanded(true);
+    }
+  }, [spotifyResults]);
+
   return (
     <motion.div
       initial={{ y: "100%" }}
@@ -41,7 +48,7 @@ export default function SpotifyBottomSheet({
       className="fixed bottom-0 left-0 right-0 bg-black/90 border-t shadow-lg"
     >
       <div 
-        className="w-full h-1.5 bg-gray-200 rounded-full mx-auto my-2 cursor-pointer"
+        className="w-16 rounded-full h-1.5 bg-gray-500 mx-auto mt-2 mb-4 cursor-pointer"
         onClick={() => setIsExpanded(!isExpanded)}
       />
 
@@ -52,7 +59,7 @@ export default function SpotifyBottomSheet({
         <div className="flex gap-4 mb-4">
           <button
             onClick={() => onMethodChange('queue')}
-            className={`flex-1 px-4 py-2 rounded transition-colors ${
+            className={`flex-1 px-4 py-2 transition-colors ${
               addMethod === 'queue'
                 ? 'bg-green-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -62,7 +69,7 @@ export default function SpotifyBottomSheet({
           </button>
           <button
             onClick={() => onMethodChange('playlist')}
-            className={`flex-1 px-4 py-2 rounded transition-colors ${
+            className={`flex-1 px-4 py-2 transition-colors ${
               addMethod === 'playlist'
                 ? 'bg-green-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -85,7 +92,7 @@ export default function SpotifyBottomSheet({
                 value={playlistName}
                 onChange={(e) => onPlaylistNameChange(e.target.value)}
                 placeholder="Enter playlist name"
-                className="w-full p-2 border rounded mb-4 bg-white/10"
+                className="w-full p-2 border mb-4 bg-white/10"
               />
             </motion.div>
           )}
@@ -93,7 +100,7 @@ export default function SpotifyBottomSheet({
 
         <div className="flex justify-between items-center">
           {deviceError && addMethod === 'queue' ? (
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded w-full">
+            <div className="p-4 bg-yellow-50 border border-yellow-200 w-full">
               <h3 className="font-bold text-yellow-800 mb-2">
                 No Active Spotify Device Found
               </h3>
@@ -108,7 +115,7 @@ export default function SpotifyBottomSheet({
               <button
                 onClick={onAddToQueue}
                 disabled={isAddingToSpotify}
-                className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 
+                className="px-4 py-2 bg-yellow-600 text-white hover:bg-yellow-700 
                   disabled:bg-yellow-300 disabled:cursor-not-allowed transition-colors
                   flex items-center gap-2"
               >
@@ -130,7 +137,7 @@ export default function SpotifyBottomSheet({
               <button
                 onClick={addMethod === 'queue' ? onAddToQueue : onCreatePlaylist}
                 disabled={isAddingToSpotify || isCreatingPlaylist || (addMethod === 'playlist' && !playlistName)}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 
+                className="px-4 py-2 bg-green-600 text-white hover:bg-green-700 
                   disabled:bg-green-300 disabled:cursor-not-allowed transition-colors
                   flex items-center gap-2"
               >
@@ -142,7 +149,7 @@ export default function SpotifyBottomSheet({
                 ) : (
                   <>
                     <SpotifyIcon />
-                    {addMethod === 'queue' ? 'Add to Queue' : 'Create Playlist'}
+                    {addMethod === 'queue' ? 'Add to Queue in your Spotify' : 'Create Playlist in your Spotify'}
                   </>
                 )}
               </button>
@@ -164,7 +171,7 @@ export default function SpotifyBottomSheet({
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="mt-4 p-4 bg-gray-50 rounded border overflow-hidden"
+              className="mt-4 p-4 bg-gray-50 border overflow-hidden"
             >
               <h3 className="font-bold mb-2">Spotify Results:</h3>
               {spotifyResults.playlist && (
