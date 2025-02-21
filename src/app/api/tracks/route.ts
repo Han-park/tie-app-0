@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
+import puppeteer from 'puppeteer';
 import { NextRequest } from 'next/server';
 
 // Add export for allowed methods
@@ -19,45 +20,6 @@ interface Track {
   title: string;
   artist: string;
   album: string;
-}
-
-// Add interfaces for YouTube data structure
-interface YouTubeContent {
-  videoSecondaryInfoRenderer?: {
-    description?: {
-      runs: YouTubeTextRun[];
-    };
-    metadataRowContainer?: {
-      metadataRowContainerRenderer?: {
-        rows: YouTubeRow[];
-      };
-    };
-  };
-}
-
-interface YouTubeTextRun {
-  text: string;
-}
-
-interface YouTubeRow {
-  richMetadataRowRenderer?: {
-    contents: YouTubeMetadata[];
-  };
-}
-
-interface YouTubeMetadata {
-  richMetadataRenderer?: {
-    style: string;
-    title?: {
-      simpleText: string;
-    };
-    subtitle?: {
-      simpleText: string;
-    };
-    callToAction?: {
-      simpleText: string;
-    };
-  };
 }
 
 export async function POST(request: NextRequest) {
@@ -80,150 +42,189 @@ export async function POST(request: NextRequest) {
     }
     log('2', `Video ID extracted: ${videoId}`);
 
-    log('3', 'Fetching YouTube page');
-    const response = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      },
-      next: { revalidate: 0 }
+    log('3', 'Launching Puppeteer');
+    const browser = await puppeteer.launch({ 
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox'] 
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch YouTube page');
-    }
-
-    const html = await response.text();
-    const $ = cheerio.load(html);
-
-    log('4', 'Extracting tracks');
-    const tracks: Track[] = [];
+    const page = await browser.newPage();
     
-    // Try to extract initial data from script tag
-    const scriptContent = $('script').filter((_, el) => {
-      const content = $(el).html();
-      return content ? content.includes('ytInitialData') : false;
-    }).first().html();
-    
-    if (scriptContent) {
-      const dataMatch = scriptContent.match(/var ytInitialData = (.+?);<\/script>/);
-      if (dataMatch) {
+    try {
+      log('4', 'Navigating to YouTube page');
+      await page.goto(`https://www.youtube.com/watch?v=${videoId}`, {
+        waitUntil: 'networkidle0',
+        timeout: 30000
+      });
+      log('4', 'Page loaded successfully');
+
+      log('5', 'Waiting for content to load');
+      await page.waitForSelector('#content', { timeout: 10000 });
+      log('5', 'Content loaded');
+
+      log('6', 'Looking for description container');
+      const descriptionSelectors = [
+        'ytd-text-inline-expander',
+        'tp-yt-paper-button#expand',
+        '.ytd-text-inline-expander #expand',
+        'button[id="expand"]',
+        'tp-yt-paper-button[id="expand"]'
+      ];
+
+      let descriptionFound = false;
+      for (const selector of descriptionSelectors) {
         try {
-          const jsonData = JSON.parse(dataMatch[1]);
-          log('4', 'Successfully parsed YouTube initial data');
-          
-          // Get the video description
-          const description = jsonData?.contents?.twoColumnWatchNextResults?.results?.results?.contents
-            ?.find((content: YouTubeContent) => content?.videoSecondaryInfoRenderer)
-            ?.videoSecondaryInfoRenderer?.description?.runs;
+          log('6', `Trying selector: ${selector}`);
+          await page.waitForSelector(selector, { timeout: 2000 });
+          descriptionFound = true;
+          log('6', `Found description with selector: ${selector}`);
+          break;
+        } catch {
+          log('6', `Selector ${selector} not found`);
+        }
+      }
 
-          if (description) {
-            log('4', 'Found video description');
+      if (!descriptionFound) {
+        throw new Error('Could not find video description');
+      }
+
+      log('7', 'Scrolling to make description visible');
+      await page.evaluate(() => {
+        // Scroll a bit more to ensure the button is in view
+        window.scrollBy(0, 700);
+      });
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      log('7', 'Scrolled and waited');
+
+      log('8', 'Attempting to expand description');
+      try {
+        // Try clicking using JavaScript directly
+        await page.evaluate(() => {
+          const expandButton = document.querySelector('tp-yt-paper-button#expand');
+          if (expandButton) {
+            (expandButton as HTMLElement).click();
+            return true;
+          }
+          
+          // Fallback to text content search
+          const buttons = Array.from(document.querySelectorAll('button, tp-yt-paper-button'));
+          const showMoreButton = buttons.find(button => 
+            button.textContent?.includes('더보기') || // Korean
+            button.textContent?.includes('Show more') || // English
+            button.textContent?.includes('...more') // Alternative text
+          );
+          
+          if (showMoreButton) {
+            (showMoreButton as HTMLElement).click();
+            return true;
+          }
+          
+          return false;
+        });
+        
+        log('8', 'Successfully clicked expand button');
+      } catch (e: unknown) {
+        // Type guard for Error
+        const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+        log('8', `Failed to click expand button: ${errorMessage}`);
+        throw new Error('Could not expand video description');
+      }
+
+      // Wait longer for the content to load after expansion
+      await new Promise(resolve => setTimeout(resolve, 2500));
+
+      log('11', 'Getting page content and parsing');
+      const content = await page.content();
+      const $ = cheerio.load(content);
+
+      log('12', 'Extracting tracks');
+      const tracks: Track[] = [];
+      
+      // Updated selectors to specifically target music section
+      const musicSectionSelectors = [
+        '#items ytd-horizontal-card-list-renderer[section-identifier="music"]',
+        '#contents ytd-horizontal-card-list-renderer[section-identifier="music"]',
+        // Backup selectors
+        'ytd-horizontal-card-list-renderer:contains("Music")',
+        '#contents ytd-horizontal-card-list-renderer'
+      ];
+
+      let musicSectionFound = false;
+      for (const sectionSelector of musicSectionSelectors) {
+        try {
+          log('12', `Looking for music section with selector: ${sectionSelector}`);
+          const musicSection = $(sectionSelector);
+          
+          if (musicSection.length > 0) {
+            log('12', 'Found music section');
+            musicSectionFound = true;
+
+            // Create a Set to store unique track identifiers
+            const uniqueTracks = new Set();
             let trackNumber = 1;
-            let currentTrack: Partial<Track> = {};
-            
-            // Process description line by line
-            description.forEach((run: YouTubeTextRun) => {
-              const text = run.text.trim();
-              
-              // Skip empty lines
-              if (!text) return;
-              
-              // Look for common track listing patterns
-              const trackPattern = /^(\d+\.|[-•]|\d+\)|\d+)\s*(.+)$/;
-              const match = text.match(trackPattern);
-              
-              if (match) {
-                // If we have a previous track, push it
-                if (currentTrack.title) {
-                  tracks.push({
-                    number: trackNumber++,
-                    title: currentTrack.title || '',
-                    artist: currentTrack.artist || 'Unknown Artist',
-                    album: currentTrack.album || 'Unknown Album'
-                  });
-                }
+
+            // Updated track selectors within music section
+            musicSection.find('.yt-video-attribute-view-model__link-container').each((_, element) => {
+              const title = $(element).find('.yt-video-attribute-view-model__title').first().text().trim();
+              const artist = $(element).find('.yt-video-attribute-view-model__subtitle span').first().text().trim();
+              const album = $(element).find('.yt-video-attribute-view-model__secondary-subtitle span').first().text().trim();
+
+              // Skip if it looks like a person
+              if (title && artist && !$(element).closest('[section-identifier="people"]').length) {
+                const trackId = `${title}-${artist}`.toLowerCase();
                 
-                // Start new track
-                const trackInfo = match[2].split('-').map((s: string) => s.trim());
-                currentTrack = {
-                  title: trackInfo[1] || trackInfo[0],
-                  artist: trackInfo[0]
-                };
-              } else if (text.includes(' - ')) {
-                // Alternative format: "Artist - Title"
-                const [artist, title] = text.split('-').map((s: string) => s.trim());
-                if (title && artist) {
+                if (!uniqueTracks.has(trackId)) {
+                  uniqueTracks.add(trackId);
                   tracks.push({
-                    number: trackNumber++,
+                    number: trackNumber,
                     title,
                     artist,
-                    album: 'Unknown Album'
+                    album
                   });
+                  
+                  log('12', `Found track ${trackNumber}: ${title} by ${artist}`);
+                  trackNumber++;
+                } else {
+                  log('12', `Skipping duplicate track: ${title} by ${artist}`);
                 }
               }
             });
-            
-            // Push the last track if exists
-            if (currentTrack.title) {
-              tracks.push({
-                number: trackNumber,
-                title: currentTrack.title,
-                artist: currentTrack.artist || 'Unknown Artist',
-                album: currentTrack.album || 'Unknown Album'
-              });
+
+            if (tracks.length > 0) {
+              log('12', `Successfully found ${tracks.length} unique tracks in music section`);
+              break;
             }
           }
-
-          // If no tracks found in description, try music section
-          if (tracks.length === 0) {
-            log('4', 'No tracks found in description, checking music section');
-            const musicSection = jsonData?.contents?.twoColumnWatchNextResults?.results?.results?.contents
-              ?.find((content: YouTubeContent) => content?.videoSecondaryInfoRenderer?.metadataRowContainer)
-              ?.videoSecondaryInfoRenderer?.metadataRowContainer?.metadataRowContainerRenderer?.rows
-              ?.find((row: YouTubeRow) => 
-                row?.richMetadataRowRenderer?.contents?.[0]?.richMetadataRenderer?.style === 'RICH_METADATA_RENDERER_STYLE_BOX'
-              );
-
-            if (musicSection) {
-              const musicTracks = musicSection?.richMetadataRowRenderer?.contents;
-              musicTracks?.forEach((track: YouTubeMetadata, index: number) => {
-                const metadata = track?.richMetadataRenderer;
-                if (metadata) {
-                  tracks.push({
-                    number: index + 1,
-                    title: metadata?.title?.simpleText || 'Unknown Title',
-                    artist: metadata?.subtitle?.simpleText || 'Unknown Artist',
-                    album: metadata?.callToAction?.simpleText || 'Unknown Album'
-                  });
-                }
-              });
-            }
-          }
-        } catch (e) {
-          log('4', `Failed to parse initial data: ${e instanceof Error ? e.message : 'Unknown error'}`);
+        } catch {
+          log('12', `Failed with selector ${sectionSelector}, trying next...`);
         }
       }
+
+      if (!musicSectionFound) {
+        log('12', 'Could not find music section');
+      }
+
+      if (tracks.length === 0) {
+        throw new Error('No music tracks found in the video');
+      }
+
+      log('13', 'Process completed successfully');
+      const videoTitle = $('title').text().replace(' - YouTube', '').trim();
+      return NextResponse.json({ 
+        tracks,
+        logs,
+        videoTitle
+      });
+    } finally {
+      log('14', 'Closing browser');
+      await browser.close();
     }
-
-    if (tracks.length === 0) {
-      throw new Error('No music tracks found in the video');
-    }
-
-    log('5', `Successfully extracted ${tracks.length} tracks`);
-    const videoTitle = $('title').text().replace(' - YouTube', '').trim();
-    return NextResponse.json({ 
-      tracks,
-      logs,
-      videoTitle
-    });
-
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     log('Error', `Error in track extraction: ${errorMessage}`);
     return NextResponse.json(
       { 
         error: error instanceof Error ? error.message : 'Failed to fetch tracks',
-        logs
+        logs // Include logs in the response
       },
       { status: 500 }
     );
