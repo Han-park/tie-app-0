@@ -185,7 +185,7 @@ export default function Home() {
   return (
     <div className="min-h-screen p-8 pb-32">
       <main className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-normal mb-8">TIE: YouTube Mix Set Bookmarker</h1>
+        <h1 className="text-2xl font-normal mb-8">TIE: hello YouTube Mix Set Bookmarker</h1>
       
         <form onSubmit={handleUrlSubmit} className="mb-8">
           <input
