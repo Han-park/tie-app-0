@@ -2,14 +2,14 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 export async function GET() {
-  const cookieStore = cookies();
-  const refreshToken = cookieStore.get('spotify_refresh_token');
-
-  if (!refreshToken) {
-    return NextResponse.json({ error: 'No refresh token found' }, { status: 401 });
-  }
-
   try {
+    const cookieStore = await cookies();
+    const refreshToken = cookieStore.get('spotify_refresh_token');
+
+    if (!refreshToken) {
+      return NextResponse.json({ error: 'No refresh token found' }, { status: 401 });
+    }
+
     const response = await fetch('https://accounts.spotify.com/api/token', {
       method: 'POST',
       headers: {
