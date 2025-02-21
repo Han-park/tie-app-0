@@ -21,6 +21,45 @@ interface Track {
   album: string;
 }
 
+// Add interfaces for YouTube data structure
+interface YouTubeContent {
+  videoSecondaryInfoRenderer?: {
+    description?: {
+      runs: YouTubeTextRun[];
+    };
+    metadataRowContainer?: {
+      metadataRowContainerRenderer?: {
+        rows: YouTubeRow[];
+      };
+    };
+  };
+}
+
+interface YouTubeTextRun {
+  text: string;
+}
+
+interface YouTubeRow {
+  richMetadataRowRenderer?: {
+    contents: YouTubeMetadata[];
+  };
+}
+
+interface YouTubeMetadata {
+  richMetadataRenderer?: {
+    style: string;
+    title?: {
+      simpleText: string;
+    };
+    subtitle?: {
+      simpleText: string;
+    };
+    callToAction?: {
+      simpleText: string;
+    };
+  };
+}
+
 export async function POST(request: NextRequest) {
   const logs: LogMessage[] = [];
   
@@ -63,7 +102,6 @@ export async function POST(request: NextRequest) {
       const content = $(el).html();
       return content ? content.includes('ytInitialData') : false;
     }).first().html();
-    let musicData;
     
     if (scriptContent) {
       const dataMatch = scriptContent.match(/var ytInitialData = (.+?);<\/script>/);
@@ -74,7 +112,7 @@ export async function POST(request: NextRequest) {
           
           // Get the video description
           const description = jsonData?.contents?.twoColumnWatchNextResults?.results?.results?.contents
-            ?.find((content: any) => content?.videoSecondaryInfoRenderer)
+            ?.find((content: YouTubeContent) => content?.videoSecondaryInfoRenderer)
             ?.videoSecondaryInfoRenderer?.description?.runs;
 
           if (description) {
@@ -83,7 +121,7 @@ export async function POST(request: NextRequest) {
             let currentTrack: Partial<Track> = {};
             
             // Process description line by line
-            description.forEach((run: any) => {
+            description.forEach((run: YouTubeTextRun) => {
               const text = run.text.trim();
               
               // Skip empty lines
@@ -139,15 +177,15 @@ export async function POST(request: NextRequest) {
           if (tracks.length === 0) {
             log('4', 'No tracks found in description, checking music section');
             const musicSection = jsonData?.contents?.twoColumnWatchNextResults?.results?.results?.contents
-              ?.find((content: any) => content?.videoSecondaryInfoRenderer?.metadataRowContainer)
+              ?.find((content: YouTubeContent) => content?.videoSecondaryInfoRenderer?.metadataRowContainer)
               ?.videoSecondaryInfoRenderer?.metadataRowContainer?.metadataRowContainerRenderer?.rows
-              ?.find((row: any) => 
+              ?.find((row: YouTubeRow) => 
                 row?.richMetadataRowRenderer?.contents?.[0]?.richMetadataRenderer?.style === 'RICH_METADATA_RENDERER_STYLE_BOX'
               );
 
             if (musicSection) {
               const musicTracks = musicSection?.richMetadataRowRenderer?.contents;
-              musicTracks?.forEach((track: any, index: number) => {
+              musicTracks?.forEach((track: YouTubeMetadata, index: number) => {
                 const metadata = track?.richMetadataRenderer;
                 if (metadata) {
                   tracks.push({
