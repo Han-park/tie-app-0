@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
-import puppeteer from 'puppeteer-core';
-import chromium from 'chrome-aws-lambda';
+import puppeteer from 'puppeteer';
 import { NextRequest } from 'next/server';
 
 // Add export for allowed methods
@@ -46,10 +45,12 @@ export async function POST(request: NextRequest) {
 
     log('3', 'Launching Puppeteer');
     const browser = await puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath,
-      headless: chromium.headless,
+      headless: 'new',
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage'
+      ]
     });
 
     const page = await browser.newPage();

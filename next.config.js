@@ -3,6 +3,11 @@ const nextConfig = {
   experimental: {
     serverActions: true,
   },
+  webpack: (config, { isServer }) => {
+    // Ignore source map warnings from chrome-aws-lambda
+    config.ignoreWarnings = [/Failed to parse source map/];
+    return config;
+  },
   async headers() {
     return [
       {
